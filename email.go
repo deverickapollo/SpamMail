@@ -1,15 +1,35 @@
 package main
 
+/*
+ * Author: Deverick Simpson
+ * go get gopkg.in/gomail.v2
+ * Tested against https://github.com/rnwood/smtp4dev
+ *
+ * Scanner is not adequate for lines > 65536 chars
+ * Goal: Read file and spam emails concurrently 
+ */
 import (
     "bufio"
     "fmt"
+    "sync"
+	"gopkg.in/gomail.v2"
     "log"
+    "strings"
     "os"
-
+    "time"
+	"encoding/json"
 )
+var d = gomail.NewPlainDialer("localhost", 25, "login", "password")
 
+type Email struct{
+	From string
+	To string
+	Subject string
+	Text string
 
+}
 
+var msgstruct Email
 
 func openFile(filename string) (*os.File ) {
 	file, err := os.Open(filename)
@@ -19,26 +39,69 @@ func openFile(filename string) (*os.File ) {
     return file
 }
 
-func batchReadLines(file *os.File, currline int, chunk int){
-
+/*
+ *
+ * Sending a mail 
+ */
+func sendEmail(msg string){
+	err := json.Unmarshal([]byte(msg), &msgstruct)
+    if err != nil {
+        fmt.Println(err)
+    }
+    parseFromEmail := strings.Split(msgstruct.From,"@")
+    parseToEmail := strings.Split(msgstruct.To,"@")
+    m := gomail.NewMessage()
+    m.SetAddressHeader("From", msgstruct.From, parseFromEmail[0])
+    m.SetHeader("To", m.FormatAddress(msgstruct.To, parseToEmail[0]))
+    m.SetHeader("Subject", msgstruct.Subject)
+    m.SetBody("text/plain", msgstruct.Text)
+    if err := d.DialAndSend(m); err != nil {
+        panic(err)
+    }
+}
+/*
+ *
+ * Function for workers to call concurrently. Fan Out Philosophy. 
+ */
+func worker(msgChannel <-chan string, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for {
+        task, ok := <-msgChannel
+        if !ok {
+            return
+        }
+        sendEmail(task)
+    }
 }
 
-
-func main() {
+func pool(wg *sync.WaitGroup, workers int) {
 
 	file := openFile("1mill.txt")
     scanner := bufio.NewScanner(file)
+    emailTask := make(chan string)
+
+    for i := 0; i < workers; i++ {
+        go worker(emailTask, wg)
+    }
+
     for scanner.Scan() {
-        fmt.Println(scanner.Text())
-        //Send to a worker
-
+		emailTask <- scanner.Text() 
     }
 
+    close(emailTask)
     if err := scanner.Err(); err != nil {
-        log.Fatal(err)
-    }
+    	log.Fatal(err)
+	}
 
     defer file.Close()
-
 }
-//Scanner does not deal well with lines longer than 65536 characters
+
+func main() {
+	start := time.Now()
+    var wg sync.WaitGroup
+    wg.Add(50)
+    go pool(&wg, 50)
+    wg.Wait()
+    elapsed := time.Since(start)
+    log.Printf("Process took %s to complete", elapsed)
+}
