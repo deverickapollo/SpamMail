@@ -6,7 +6,7 @@
 
 1. Ensure SMTP server is running on localhost port 25.  Go Script tested with smtp4dev.
 	* Further documentation found at [SMTPDEV](https://github.com/rnwood/smtp4dev)
-2. Email Entry should have the following format. 
+2. Email entry should have the following format. 
 	* {"From": "what@who.com", "To": "who@who.com","Subject": "Some Subject","Text":"Some Text"}
 
 ## Execute:
@@ -15,4 +15,4 @@
 
 ## Notes:
 
-* Processing Time returned to console after completion.
+* Processing time outputs to console after completion.
