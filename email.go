@@ -3,11 +3,14 @@ package main
 /*
  * Author: Deverick Simpson
  * go get gopkg.in/gomail.v2
- * Tested against https://github.com/rnwood/smtp4dev
- *
+ * Tested against https://github.com/rnwood/smtp4dev 
+ * macOS Catalina 3.1 Quad-Core Intel Core I7
+ * ulimit -n 10000 Increase open files.
+ * 50000 messages 4minutesmidi
  * Scanner is not adequate for lines > 65536 chars
  * Goal: Read file and spam emails concurrently 
  */
+ 
 import (
     "bufio"
     "fmt"
@@ -17,10 +20,15 @@ import (
     "strings"
     "os"
     "time"
-	"encoding/json"
+    "encoding/json"
 )
+
+
 var d = gomail.NewPlainDialer("localhost", 25, "login", "password")
 
+/*
+ *  Email data structure
+ */
 type Email struct{
 	From string
 	To string
@@ -31,6 +39,9 @@ type Email struct{
 
 var msgstruct Email
 
+/*
+ *  Open a given file
+ */
 func openFile(filename string) (*os.File ) {
 	file, err := os.Open(filename)
     if err != nil {
@@ -40,8 +51,7 @@ func openFile(filename string) (*os.File ) {
 }
 
 /*
- *
- * Sending a mail 
+ * Send an email  
  */
 func sendEmail(msg string){
 	err := json.Unmarshal([]byte(msg), &msgstruct)
@@ -59,8 +69,8 @@ func sendEmail(msg string){
         panic(err)
     }
 }
+
 /*
- *
  * Function for workers to call concurrently. Fan Out Philosophy. 
  */
 func worker(msgChannel <-chan string, wg *sync.WaitGroup) {
