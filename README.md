@@ -11,7 +11,7 @@
 
 ## Execute:
 
-go run email.go some_mail_list.txt
+``` go run email.go some_mail_list.txt ```
 
 ## Notes:
 
